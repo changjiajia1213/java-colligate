@@ -15,6 +15,10 @@ public class ThreadTestUtils {
         this.object = object;
     }
 
+    public ThreadTestUtils() {
+
+    }
+
     public void waitA() throws InterruptedException {
         synchronized (object){
             object.wait();
