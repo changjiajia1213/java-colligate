@@ -1,5 +1,7 @@
 package com.changjiajia;
 
+import com.changjiajia.entity.TestUU;
+import com.changjiajia.redis.utils.ProtoStuffUtil;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -234,4 +236,174 @@ public class RedisApiTest {
         // 非管道批量添加50万数据所耗时长（秒）：46.709  -->单个添加
         // 非管道批量添加50万数据所耗时长（秒）：3.046   -->优化使用map添加
     }
+
+    /**
+     * 默认使用JDK序列化方式
+     * <p>
+     * key->String value->String
+     * 测试使用String数据结构存储10万条数据所占内存
+     * 一个key对应一个value
+     */
+    @Test
+    public void test09() {
+
+        long start = System.currentTimeMillis();
+        Map<String, String> map = new HashMap<>();
+        for (int i = 1; i <= 100000; i++) {
+            TestUU testUU = new TestUU();
+            testUU.setUserName("username" + i);
+            testUU.setPassword("password" + i);
+            map.put("key" + i, testUU.toString());
+        }
+        long end = System.currentTimeMillis();
+        redisTemplate.opsForValue().multiSet(map);
+
+        System.out.println("===>" + (end - start) / 1000.0);
+        // 测试占用内存---->5838KB
+    }
+
+    /**
+     * 默认使用JDK序列化方式
+     * <p>
+     * 控制键数量降低内寸使用 使用hash数据结构存储
+     */
+    @Test
+    public void test10() {
+        long start = System.currentTimeMillis();
+        Map<String, String> map = new HashMap<>();
+        for (int i = 1; i <= 100000; i++) {
+            TestUU testUU = new TestUU();
+            testUU.setUserName("userName" + i); // 字母的大小写也会影响内存占用
+            testUU.setPassword("password" + i);
+            map.put("key" + i, testUU.toString());
+            // 每10万条存储一次
+            if (i % 10000 == 0) {
+                redisTemplate.opsForHash().putAll("KEY" + i, map);
+                map.clear();
+            }
+        }
+
+        long end = System.currentTimeMillis();
+
+        System.out.println("===>" + (end - start) / 1000.0);
+        // 测试占用内存----> username-->5740KB
+        // 测试占用内存----> userName-->5350KB
+    }
+
+
+    /**
+     * 实验目标：测试三中序列化方式哪一种存储相同数据所占内存最小
+     * 实验结论：使用 Jackson2JsonRedisSerializer 序列化方式存储相同数据是三种序列化方式中所占内存最小
+     * 注：所用时长会根据每次运行而改变
+     */
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate1;
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate2;
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate3;
+
+    /**
+     * 使用 Jackson2JsonRedisSerializer 序列化方式测试存储10万条所用内存
+     */
+    @Test
+    public void test11() {
+        long start = System.currentTimeMillis();
+        Map<String, Object> map = new HashMap<>();
+        for (int i = 1; i <= 100000; i++) {
+            TestUU testUU = new TestUU();
+            testUU.setUserName("username" + i);
+            testUU.setPassword("password" + i);
+            map.put("key" + i, testUU);
+        }
+        long end = System.currentTimeMillis();
+        redisTemplate1.opsForValue().multiSet(map);
+
+        System.out.println("使用 Jackson2JsonRedisSerializer 序列化方式测试存储10万条所用时长：" + (end - start) / 1000.0 + "s");
+        // 使用 Jackson2JsonRedisSerializer 序列化方式测试存储10万条所用时长：0.056s
+        // 测试占用内存---->5643KB
+    }
+
+    /**
+     * 使用 GenericJackson2JsonRedisSerializer 序列化方式测试存储10万条所用内存
+     */
+    @Test
+    public void test12() {
+        long start = System.currentTimeMillis();
+        Map<String, Object> map = new HashMap<>();
+        for (int i = 1; i <= 100000; i++) {
+            TestUU testUU = new TestUU();
+            testUU.setUserName("username" + i);
+            testUU.setPassword("password" + i);
+            map.put("key" + i, testUU);
+        }
+        long end = System.currentTimeMillis();
+        redisTemplate2.opsForValue().multiSet(map);
+
+        System.out.println("使用 GenericJackson2JsonRedisSerializer 序列化方式测试存储10万条所用时长：" + (end - start) / 1000.0 + "s");
+        // 使用 GenericJackson2JsonRedisSerializer 序列化方式测试存储10万条所用时长：0.076s
+        // 测试占用内存---->9842KB
+    }
+
+    /**
+     * 使用 JDK 序列化方式测试存储10万条所用内存
+     */
+    @Test
+    public void test13() {
+        long start = System.currentTimeMillis();
+        Map<String, Object> map = new HashMap<>();
+        for (int i = 1; i <= 100000; i++) {
+            TestUU testUU = new TestUU();
+            testUU.setUserName("username" + i);
+            testUU.setPassword("password" + i);
+            map.put("key" + i, testUU);
+        }
+        long end = System.currentTimeMillis();
+        redisTemplate3.opsForValue().multiSet(map);
+
+        System.out.println("使用 JDK 序列化方式测试存储10万条所用时长：" + (end - start) / 1000.0 + "s");
+        // 使用 JDK 序列化方式测试存储10万条所用时长：0.054s
+        // 测试占用内存---->14228KB
+    }
+
+    /**
+     * redis配合高效序列化工具protostuff(谷歌)
+     *
+     * 实验目标：测试 高效序列化工具protostuff 与上述序列化方式存储相同数据所占内存哪种更小
+     * 实验结论：通过结果我们可以发现使用 protostuff工具类 存储数据使用内存是最小的，
+     *          但是由于使用的是自定义序列化方式，改变了序列化的算法，会降低存储速率，导致存储时长变长
+     *          简单来说，存储占用内存最小，存储时间最长
+     */
+    @Test
+    public void test14() {
+        long start = System.currentTimeMillis();
+        //List<TestUU> list = new ArrayList<>();
+
+        // 采用回调方式
+        redisTemplate.execute(new RedisCallback<Void>() {
+            @Override
+            public Void doInRedis(RedisConnection redisConnection) throws DataAccessException {
+                // 因为改变了序列化方式 储存的是字节方便进行压缩
+                Map<byte[], byte[]> map = new HashMap<>();
+                for (int i = 1; i <= 100000; i++) {
+                    TestUU testUU = new TestUU();
+                    testUU.setUserName("username" + "i");
+                    testUU.setPassword("password" + i);
+                    // 将对象转为字节数组
+                    map.put(("key0" + i).getBytes(), ProtoStuffUtil.serialize(testUU));
+                }
+                redisConnection.mSet(map);
+                // 方便垃圾回收
+                map = null;
+                return null;
+            }
+        });
+
+        // System.out.println(list.size());
+        long end = System.currentTimeMillis();
+        System.out.println("使用 高效序列化工具protostuff 方式测试存储10万条所用时长：" + (end - start) / 1000.0 + "s");
+        // 使用 高效序列化工具protostuff 方式测试存储10万条所用时长：8.674s
+        // 测试占用内存---->3690KB
+    }
+
 }
