@@ -1,0 +1,39 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>Title</title>
+
+    <script src="http://libs.baidu.com/jquery/2.1.4/jquery.min.js"></script>
+    <script type="text/javascript">
+
+
+        $(function () {
+            $.ajax({
+                type: "POST",
+                url: "http://localhost:8082/getCode",
+                success: function (msg) {
+                    $("#code").val(msg);
+                }
+            })
+        })
+
+        function test() {
+
+            var code = $("#code").val();
+            $.ajax({
+                type: "POST",
+                url: "http://localhost:8082/addObject?code=" + code,
+                success: function (msg) {
+                    console.log(msg)
+                }
+            })
+        }
+    </script>
+</head>
+<body>
+
+<button onclick="test()">测试幂等性</button>
+<input name="code" id="code" type="hidden" value="">
+</body>
+</html>
