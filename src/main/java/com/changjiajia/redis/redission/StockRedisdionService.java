@@ -1,7 +1,7 @@
 package com.changjiajia.redis.redission;
 
 import com.changjiajia.redis.redisLock.LockDao;
-import com.changjiajia.redis.redisLock.Stock;
+import com.changjiajia.entity.Stock;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,5 +1,6 @@
 package com.changjiajia.redis.redisLock;
 
+import com.changjiajia.leguan.OptimisticLockListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,6 +21,12 @@ public class RedisMessageConfig {
     private MyRedisMessageListener myRedisMessageListener;
 
     /**
+     * 乐观锁消息监听
+     */
+    @Autowired
+    private OptimisticLockListener optimisticLockListener;
+
+    /**
      * 创建messageListenerContainer容器
      * @param redisConnectionFactory
      * @return
@@ -29,6 +36,8 @@ public class RedisMessageConfig {
         RedisMessageListenerContainer redisMessageListenerContainer = new RedisMessageListenerContainer();
         redisMessageListenerContainer.setConnectionFactory(redisConnectionFactory);
         redisMessageListenerContainer.addMessageListener(myRedisMessageListener, new PatternTopic("LOCK"));
+
+        redisMessageListenerContainer.addMessageListener(optimisticLockListener, new PatternTopic("LEGUAN"));
 
         return redisMessageListenerContainer;
     }

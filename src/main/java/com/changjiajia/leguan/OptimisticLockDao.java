@@ -1,4 +1,4 @@
-package com.changjiajia.redis.redisLock;
+package com.changjiajia.leguan;
 
 import com.changjiajia.entity.Stock;
 import org.apache.ibatis.annotations.Mapper;
@@ -9,10 +9,10 @@ import org.apache.ibatis.annotations.Update;
  * @program: java-colligate
  * 作者: ChangJiaJia
  * 日期: 2020-07-12 22:00
- * 描述: dao层
+ * 描述: 使用乐观锁
  **/
 @Mapper
-public interface LockDao {
+public interface OptimisticLockDao {
 
     /**
      * 获取库存
@@ -20,7 +20,7 @@ public interface LockDao {
      * @param goodsId
      * @return
      */
-    @Select("select id,goods_id as goodsId,stock from base_stock where goods_id=#{goodsId}")
+    @Select("select id,goods_id as goodsId,stock,version from base_stock where goods_id=#{goodsId}")
     public Stock getStockByGoodsId(long goodsId);
 
 
@@ -30,7 +30,7 @@ public interface LockDao {
      * @param stock
      * @return
      */
-    @Update("update base_stock set stock=#{stock} where goods_id=#{goodsId}")
-    public int updateStock(Stock stock);
+    @Update("update base_stock set stock=#{stock},version=version+1 where goods_id=#{goodsId} and version=#{version}")
+    public int updateStockOptimistic(Stock stock);
 
 }

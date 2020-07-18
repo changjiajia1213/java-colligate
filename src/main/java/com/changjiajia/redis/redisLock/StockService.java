@@ -1,6 +1,7 @@
 package com.changjiajia.redis.redisLock;
 
 import com.alibaba.fastjson.JSON;
+import com.changjiajia.entity.Stock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
